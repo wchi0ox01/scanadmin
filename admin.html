@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบเช็คชื่อนักเรียนอัจฉริยะ - แอดมิน</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', 'Kanit', sans-serif; }
+        .loader { border-top-color: #3b82f6; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300">
+    <div class="container mx-auto p-4 md:p-6">
+        <!-- Header -->
+        <header class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i data-lucide="scan-face" class="text-blue-600 w-8 h-8"></i>
+                <h1 class="text-xl md:text-2xl font-bold text-gray-700 dark:text-gray-200">ระบบเช็คชื่อนักเรียนอัจฉริยะ - วิทยาลัยอาชีวศึกษาสระบุรี</h1>
+            </div>
+            <nav class="flex space-x-2">
+                <a href="index.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 rounded-md">ลงทะเบียน</a>
+                <a href="scen.html" class="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 rounded-md">เช็คชื่อ</a>
+                <a href="admin.html" class="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-md">แอดมิน</a>
+            </nav>
+        </header>
+
+        <!-- Admin Content -->
+        <div class="space-y-6">
+            <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-bold mb-4">ภาพรวมการเช็คชื่อ</h2>
+                <div class="flex flex-col sm:flex-row items-center justify-between mb-4 gap-4">
+                    <p id="current-date" class="text-lg font-medium text-gray-700 dark:text-gray-300">16 ต.ค. 2568</p>
+                    <input type="date" id="admin-date" class="border rounded-lg p-2 w-full sm:w-auto bg-transparent dark:text-gray-200 dark:border-gray-600">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 text-center">
+                     <div class="bg-blue-100 dark:bg-blue-900/50 p-4 rounded-lg">
+                         <h3 class="text-gray-600 dark:text-gray-400">มาเรียน</h3>
+                         <p id="stat-present" class="text-3xl font-bold text-blue-700 dark:text-blue-400">0</p>
+                     </div>
+                    <div class="bg-yellow-100 dark:bg-yellow-900/50 p-4 rounded-lg">
+                        <h3 class="text-gray-600 dark:text-gray-400">มาสาย</h3>
+                        <p id="stat-late" class="text-3xl font-bold text-yellow-700 dark:text-yellow-400">0</p>
+                    </div>
+                    <div class="bg-red-100 dark:bg-red-900/50 p-4 rounded-lg">
+                        <h3 class="text-gray-600 dark:text-gray-400">ขาด/ลา</h3>
+                        <p id="stat-absent" class="text-3xl font-bold text-red-700 dark:text-red-400">0</p>
+                    </div>
+                </div>
+
+                <!-- Chart Container -->
+                <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mt-6">
+                    <div class="lg:col-span-2 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                        <h3 class="font-semibold mb-2 text-center">สรุปการเข้าเรียน</h3>
+                        <div class="max-w-[250px] mx-auto">
+                             <canvas id="attendance-pie-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-3 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                        <h3 class="font-semibold mb-2 text-center">จำนวนการเช็คชื่อรายชั่วโมง</h3>
+                        <div>
+                            <canvas id="attendance-bar-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-md">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+                    <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-300">จัดการข้อมูลนักเรียน</h2>
+                    <button onclick="openStudentModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2 w-full sm:w-auto justify-center">
+                        <i data-lucide="user-plus"></i><span>เพิ่มนักเรียน</span>
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left min-w-[600px]">
+                        <thead class="bg-gray-50 dark:bg-gray-700/50">
+                            <tr>
+                                <th class="p-3">รหัสนักเรียน</th>
+                                <th class="p-3">ชื่อ-สกุล</th>
+                                <th class="p-3">ชั้นเรียน</th>
+                                <th class="p-3 text-center">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="student-table-body" class="divide-y divide-gray-200 dark:divide-gray-700"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-md">
+                <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">ตั้งค่าระบบ</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="font-medium mb-2">ตั้งค่าเวลาเช็คชื่อ</h3>
+                        <div class="flex items-center gap-2 mb-4">
+                            <label for="checkin-start">เวลาเริ่ม:</label>
+                            <input type="time" id="checkin-start" value="06:00" class="border rounded-lg p-2 bg-transparent dark:text-gray-200 dark:border-gray-600">
+                        </div>
+                        <div class="flex items-center gap-2 mb-4">
+                            <label for="checkin-end">เวลาสิ้นสุด:</label>
+                            <input type="time" id="checkin-end" value="08:30" class="border rounded-lg p-2 bg-transparent dark:text-gray-200 dark:border-gray-600">
+                        </div>
+                        <button onclick="saveTimeSettings()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            บันทึกการตั้งค่าเวลา
+                        </button>
+                    </div>
+                    <div>
+                        <h3 class="font-medium mb-2">ตั้งค่าจุดเช็คชื่อ</h3>
+                        <div class="mb-4">
+                            <label for="checkin-location" class="block mb-2">พิกัดจุดศูนย์กลาง:</label>
+                            <input type="text" id="checkin-location" value="14.5762840, 100.8700450" class="w-full border rounded-lg p-2 bg-transparent dark:text-gray-200 dark:border-gray-600">
+                        </div>
+                        <div class="mb-4">
+                            <label for="checkin-radius" class="block mb-2">รัศมี (เมตร):</label>
+                            <input type="number" id="checkin-radius" value="50" class="w-full border rounded-lg p-2 bg-transparent dark:text-gray-200 dark:border-gray-600">
+                        </div>
+                        <button onclick="saveLocationSettings()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            บันทึกการตั้งค่าสถานที่
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Modal -->
+    <div id="student-modal" class="fixed inset-0 bg-gray-800 bg-opacity-70 flex items-center justify-center p-4 z-40 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 md:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <h2 id="modal-title" class="text-2xl font-bold mb-6">เพิ่มข้อมูลนักเรียน</h2>
+            <form id="student-form" onsubmit="handleStudentFormSubmit(event)">
+                <input type="hidden" id="student-row-index">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="student-id" class="block font-medium mb-2">รหัสนักเรียน</label>
+                        <input type="text" id="student-id" class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg p-3" required>
+                        <label for="student-name" class="block font-medium mb-2 mt-4">ชื่อ-สกุล</label>
+                        <input type="text" id="student-name" class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg p-3" required>
+                        <label for="student-class" class="block font-medium mb-2 mt-4">ชั้นเรียน</label>
+                        <input type="text" id="student-class" class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg p-3" required>
+                    </div>
+                    <div class="flex flex-col">
+                        <div class="flex border-b border-gray-200 dark:border-gray-700 mb-4">
+                            <button type="button" id="tab-btn-camera" onclick="switchImageInput('camera')" class="flex-1 py-2 text-center font-medium border-b-2 border-blue-600 text-blue-600">ถ่ายภาพ</button>
+                            <button type="button" id="tab-btn-upload" onclick="switchImageInput('upload')" class="flex-1 py-2 text-center font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">อัปโหลด</button>
+                        </div>
+                        <div id="input-camera" class="flex flex-col items-center">
+                            <div class="w-full max-w-xs mx-auto aspect-[4/3] bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden relative">
+                                <video id="capture-video" class="w-full h-full object-cover" autoplay playsinline></video>
+                                <canvas id="capture-canvas" class="hidden"></canvas>
+                            </div>
+                            <button type="button" onclick="capturePhoto()" class="bg-indigo-600 text-white px-4 py-2 mt-4 rounded-lg hover:bg-indigo-700 w-full max-w-xs">ถ่ายภาพ</button>
+                        </div>
+                        <div id="input-upload" class="hidden flex flex-col items-center">
+                            <div class="w-full max-w-xs mx-auto aspect-[4/3] bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                                <img id="image-preview" src="" class="w-full h-full object-cover hidden">
+                            </div>
+                            <input type="file" id="image-upload-input" accept="image/*" class="hidden">
+                            <button type="button" onclick="document.getElementById('image-upload-input').click()" class="bg-indigo-600 text-white px-4 py-2 mt-4 rounded-lg hover:bg-indigo-700 w-full max-w-xs">เลือกไฟล์รูปภาพ</button>
+                        </div>
+                        <input type="hidden" id="student-image-data">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-4 mt-8">
+                    <button type="button" onclick="closeStudentModal()" class="bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300 px-6 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500">ยกเลิก</button>
+                    <button type="submit" id="form-submit-btn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Setup Modal -->
+    <div id="setup-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 sm:p-8 max-w-lg w-full">
+            <h2 class="text-2xl font-bold mb-4">ตั้งค่าระบบครั้งแรก</h2>
+            <p class="text-gray-600 dark:text-gray-400 mb-6">กรุณานำ URL ของ Google Apps Script Web App ที่ได้จากการ Deploy มาวางที่นี่</p>
+            <label for="gas-url" class="block font-medium mb-2">Google Apps Script URL:</label>
+            <input type="url" id="gas-url" placeholder="https://script.google.com/macros/s/..." class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg p-3">
+            <button onclick="saveGasUrl()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg mt-8 hover:bg-blue-700">บันทึกและเริ่มต้นใช้งาน</button>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        const GAS_URL_KEY = 'gasWebAppUrl';
+        const CHECKIN_SETTINGS_KEY = 'checkinSettings';
+        let gasWebAppUrl = '', pieChart, barChart;
+        let students = [], attendance = [];
+        let captureStream = null;
+        let checkinSettings = {
+            startTime: '06:00',
+            endTime: '08:30',
+            location: { lat: 14.5762840, lng: 100.8700450 },
+            radius: 50
+        };
+        
+        // Initialize
+        window.onload = () => {
+            lucide.createIcons();
+            
+            // Load settings
+            const savedSettings = localStorage.getItem(CHECKIN_SETTINGS_KEY);
+            if (savedSettings) {
+                checkinSettings = JSON.parse(savedSettings);
+                document.getElementById('checkin-start').value = checkinSettings.startTime;
+                document.getElementById('checkin-end').value = checkinSettings.endTime;
+                document.getElementById('checkin-location').value = `${checkinSettings.location.lat}, ${checkinSettings.location.lng}`;
+                document.getElementById('checkin-radius').value = checkinSettings.radius;
+            }
+            
+            gasWebAppUrl = localStorage.getItem(GAS_URL_KEY);
+            
+            // Show setup modal if no GAS URL
+            if (!gasWebAppUrl) {
+                document.getElementById('setup-modal').style.display = 'flex';
+            } else {
+                document.getElementById('setup-modal').style.display = 'none';
+                updateCurrentDate();
+                document.getElementById('admin-date').valueAsDate = new Date();
+                document.getElementById('admin-date').addEventListener('change', () => { loadAttendanceDataForDashboard(); });
+                document.getElementById('image-upload-input').addEventListener('change', handleImageUpload);
+                
+                loadStudentDataForTable();
+                loadAttendanceDataForDashboard();
+            }
+        };
+
+        function updateCurrentDate() {
+            const now = new Date();
+            const options = { day: 'numeric', month: 'short', year: 'numeric' };
+            const thaiDate = now.toLocaleDateString('th-TH', options);
+            document.getElementById('current-date').textContent = thaiDate;
+        }
+
+        // Setup functions
+        function saveGasUrl() {
+            const url = document.getElementById('gas-url').value.trim();
+            if (url) {
+                localStorage.setItem(GAS_URL_KEY, url);
+                gasWebAppUrl = url;
+                document.getElementById('setup-modal').style.display = 'none';
+                alert('บันทึก URL เรียบร้อยแล้ว');
+                updateCurrentDate();
+                document.getElementById('admin-date').valueAsDate = new Date();
+                document.getElementById('admin-date').addEventListener('change', () => { loadAttendanceDataForDashboard(); });
+                document.getElementById('image-upload-input').addEventListener('change', handleImageUpload);
+                
+                loadStudentDataForTable();
+                loadAttendanceDataForDashboard();
+            } else {
+                alert('กรุณากรอก URL ให้ถูกต้อง');
+            }
+        }
+
+        // Student Management
+        function switchImageInput(type) {
+            const cameraTab = document.getElementById('tab-btn-camera'), uploadTab = document.getElementById('tab-btn-upload');
+            const cameraInput = document.getElementById('input-camera'), uploadInput = document.getElementById('input-upload');
+            if (type === 'camera') {
+                cameraTab.classList.add('border-blue-600', 'text-blue-600');
+                uploadTab.classList.remove('border-blue-600', 'text-blue-600');
+                cameraInput.classList.remove('hidden'); uploadInput.classList.add('hidden');
+                startCaptureVideo();
+            } else {
+                uploadTab.classList.add('border-blue-600', 'text-blue-600');
+                cameraTab.classList.remove('border-blue-600', 'text-blue-600');
+                uploadInput.classList.remove('hidden'); cameraInput.classList.add('hidden');
+                stopCaptureVideo();
+            }
+        }
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas'), MAX_WIDTH = 500;
+                    const scaleSize = MAX_WIDTH / img.width;
+                    canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const dataUrl = canvas.toDataURL('image/jpeg');
+                    document.getElementById('image-preview').src = dataUrl;
+                    document.getElementById('image-preview').classList.remove('hidden');
+                    document.getElementById('student-image-data').value = dataUrl;
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        function openStudentModal(student = null) {
+            const form = document.getElementById('student-form');
+            form.reset();
+            document.getElementById('image-preview').classList.add('hidden');
+            document.getElementById('image-preview').src = '';
+            document.getElementById('student-image-data').value = '';
+            switchImageInput('camera');
+            if (student) {
+                document.getElementById('modal-title').innerText = 'แก้ไขข้อมูลนักเรียน';
+                document.getElementById('student-row-index').value = student.rowIndex;
+                document.getElementById('student-id').value = student.studentid;
+                document.getElementById('student-name').value = student.name;
+                document.getElementById('student-class').value = student.class;
+                document.getElementById('student-image-data').value = student.imagedatabase64 || '';
+                if (student.imagedatabase64) {
+                    switchImageInput('upload');
+                    document.getElementById('image-preview').src = student.imagedatabase64;
+                    document.getElementById('image-preview').classList.remove('hidden');
+                }
+            } else {
+                document.getElementById('modal-title').innerText = 'เพิ่มข้อมูลนักเรียน';
+            }
+            document.getElementById('student-modal').classList.remove('hidden');
+        }
+        function closeStudentModal() { 
+            document.getElementById('student-modal').classList.add('hidden'); 
+            stopCaptureVideo(); 
+        }
+        async function startCaptureVideo() {
+            try {
+                if (captureStream) {
+                    stopCaptureVideo();
+                }
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                captureStream = stream;
+                document.getElementById('capture-video').srcObject = stream;
+            } catch (e) {
+                console.error("Could not start video for capture", e);
+                alert('ไม่สามารถเปิดกล้องสำหรับถ่ายภาพได้');
+            }
+        }
+        function stopCaptureVideo() { 
+            if (captureStream) { 
+                captureStream.getTracks().forEach(track => track.stop()); 
+                captureStream = null; 
+            } 
+            const videoEl = document.getElementById('capture-video');
+            if (videoEl && videoEl.srcObject) {
+                videoEl.srcObject.getTracks().forEach(track => track.stop());
+                videoEl.srcObject = null;
+            }
+        }
+        function capturePhoto() {
+            const videoEl = document.getElementById('capture-video');
+            if (!videoEl.srcObject) {
+                alert('กรุณาเปิดกล้องก่อนถ่ายภาพ');
+                return;
+            }
+            const canvas = document.getElementById('capture-canvas');
+            canvas.width = videoEl.videoWidth; canvas.height = videoEl.videoHeight;
+            canvas.getContext('2d').drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+            document.getElementById('student-image-data').value = canvas.toDataURL('image/jpeg');
+            alert('ถ่ายภาพเรียบร้อยแล้ว');
+        }
+        async function loadStudentDataForTable() {
+            const response = await apiCall({ action: 'getStudents' });
+            if (response.success) {
+                students = response.data;
+                const tableBody = document.getElementById('student-table-body');
+                tableBody.innerHTML = '';
+                students.forEach(student => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td class="p-3">${student.studentid}</td><td class="p-3">${student.name}</td><td class="p-3">${student.class}</td><td class="p-3 text-center"><button onclick="editStudent(${student.rowIndex})" class="text-blue-600 p-1">แก้ไข</button><button onclick="deleteStudent(${student.rowIndex})" class="text-red-600 p-1">ลบ</button></td>`;
+                    tableBody.appendChild(row);
+                 });
+            }
+        }
+        async function handleStudentFormSubmit(event) {
+            event.preventDefault();
+            const submitBtn = document.getElementById('form-submit-btn');
+            submitBtn.disabled = true; submitBtn.innerText = 'กำลังบันทึก...';
+            const studentData = { rowIndex: document.getElementById('student-row-index').value, id: document.getElementById('student-id').value, name: document.getElementById('student-name').value, class: document.getElementById('student-class').value, imageData: document.getElementById('student-image-data').value };
+            if (!studentData.imageData) { alert('กรุณาถ่ายภาพหรืออัปโหลดรูปภาพ');
+            submitBtn.disabled = false; submitBtn.innerText = 'บันทึก'; return; }
+            const action = studentData.rowIndex ? 'updateStudent' : 'addStudent';
+            const response = await apiCall({ action, data: studentData });
+            if (response.success) { closeStudentModal(); loadStudentDataForTable(); } else { alert('Error: ' + response.error); }
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'บันทึก';
+        }
+        function editStudent(rowIndex) { 
+            const student = students.find(s => s.rowIndex == rowIndex);
+            if (student) { openStudentModal(student); } 
+        }
+        async function deleteStudent(rowIndex) {
+            if (confirm('คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลนักเรียนคนนี้?')) {
+                const response = await apiCall({ action: 'deleteStudent', data: { rowIndex } });
+                if (response.success) { loadStudentDataForTable(); } else { alert('Error: ' + response.error); }
+            }
+        }
+
+        // Admin Settings
+        function saveTimeSettings() {
+            checkinSettings.startTime = document.getElementById('checkin-start').value;
+            checkinSettings.endTime = document.getElementById('checkin-end').value;
+            localStorage.setItem(CHECKIN_SETTINGS_KEY, JSON.stringify(checkinSettings));
+            alert('บันทึกการตั้งค่าเวลาเรียบร้อยแล้ว');
+        }
+        
+        function saveLocationSettings() {
+            const locationStr = document.getElementById('checkin-location').value;
+            const [lat, lng] = locationStr.split(',').map(coord => parseFloat(coord.trim()));
+            
+            if (isNaN(lat) || isNaN(lng)) {
+                alert('กรุณากรอกพิกัดให้ถูกต้อง (เช่น 14.5762840, 100.8700450)');
+                return;
+            }
+            
+            checkinSettings.location = { lat, lng };
+            checkinSettings.radius = parseInt(document.getElementById('checkin-radius').value);
+            localStorage.setItem(CHECKIN_SETTINGS_KEY, JSON.stringify(checkinSettings));
+            alert('บันทึกการตั้งค่าสถานที่เรียบร้อยแล้ว');
+        }
+
+        // Dashboard
+        async function loadAttendanceDataForDashboard() {
+             const response = await apiCall({ action: 'getAttendance' });
+             if (response.success) { 
+                 attendance = response.data.map(rec => ({ ...rec, timestamp: new Date(rec.timestamp) })); 
+                 renderDashboard(); 
+             }
+        }
+        function renderDashboard() {
+            const selectedDate = new Date(document.getElementById('admin-date').value);
+            selectedDate.setHours(0,0,0,0);
+            const attendanceToday = attendance.filter(rec => { 
+                const recDate = new Date(rec.timestamp); 
+                recDate.setHours(0,0,0,0); 
+                return recDate.getTime() === selectedDate.getTime(); 
+            });
+            
+            let onTimeCount = 0, lateCount = 0, absentCount = 0;
+            const hourlyCounts = Array(24).fill(0);
+            const presentStudents = new Set();
+            
+            attendanceToday.forEach(rec => {
+                if (rec.status === 'มาเรียน') { 
+                    onTimeCount++; 
+                    presentStudents.add(rec.id);
+                } else if (rec.status === 'มาสาย') { 
+                    lateCount++; 
+                    presentStudents.add(rec.id);
+                } else if (rec.status === 'ขาด') { 
+                    absentCount++; 
+                }
+                hourlyCounts[rec.timestamp.getHours()]++;
+            });
+            
+            document.getElementById('stat-present').innerText = onTimeCount;
+            document.getElementById('stat-late').innerText = lateCount;
+            document.getElementById('stat-absent').innerText = absentCount;
+            renderPieChart(onTimeCount, lateCount, absentCount);
+            renderBarChart(hourlyCounts);
+        }
+        function renderPieChart(onTime, late, absent) {
+            const pieCanvas = document.getElementById('attendance-pie-chart');
+            if (!pieCanvas) return;
+            const ctx = pieCanvas.getContext('2d');
+            if(pieChart) pieChart.destroy();
+            const total = onTime + late + absent;
+            if (total === 0) { 
+                ctx.clearRect(0, 0, pieCanvas.width, pieCanvas.height);
+                return; 
+            }
+            pieChart = new Chart(ctx, { 
+                type: 'pie', 
+                data: { 
+                    labels: ['มาตรงเวลา', 'มาสาย', 'ขาด'], 
+                    datasets: [{ 
+                        data: [onTime, late, absent], 
+                        backgroundColor: ['#34D399', '#FBBF24', '#F87171'] 
+                    }] 
+                } 
+            });
+        }
+        function renderBarChart(hourlyData) {
+            const barCanvas = document.getElementById('attendance-bar-chart');
+            if (!barCanvas) return;
+            const ctx = barCanvas.getContext('2d');
+            if(barChart) barChart.destroy();
+             barChart = new Chart(ctx, { 
+                 type: 'bar', 
+                 data: { 
+                     labels: Array.from({length: 12}, (_, i) => `${i+6}:00`), 
+                     datasets: [{ 
+                         label: 'จำนวนเช็คชื่อ', 
+                         data: hourlyData.slice(6, 18), 
+                         backgroundColor: '#60A5FA' 
+                     }] 
+                 }, 
+                 options: { 
+                     scales: { 
+                         y: { 
+                             beginAtZero: true, 
+                             ticks: { stepSize: 1 } 
+                         } 
+                     } 
+                 } 
+             });
+        }
+        
+        // API Call
+        async function apiCall(payload) {
+            if (!gasWebAppUrl) { 
+                alert('กรุณาตั้งค่า Google Apps Script URL ก่อน');
+                return { success: false, error: 'GAS URL not configured' };
+            }
+            try {
+                const response = await fetch(gasWebAppUrl, { 
+                    method: 'POST', 
+                    mode: 'cors', 
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+                    body: JSON.stringify(payload) 
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) { 
+                console.error('API Call Error:', error); 
+                alert(`เกิดข้อผิดพลาดในการเชื่อมต่อกับ Server:\n${error.message}`); 
+                return { success: false, error: error.message }; 
+            }
+        }
+    </script>
+</body>
+</html>
